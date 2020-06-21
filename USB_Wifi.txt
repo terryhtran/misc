@@ -1,0 +1,118 @@
+Instructions for Linux, will need to compile driver.
+The instructions/readme provided is not so clear.
+Would be better if they just provided precompiled packages and scripts to get it to work.
+ 
+
+Wifi USB dongle Instructions For Ubuntu
+XHT-6B12
+
+
+cat /etc/os-release 
+NAME="Ubuntu"
+VERSION="20.04 LTS (Focal Fossa)"
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME="Ubuntu 20.04 LTS"
+VERSION_ID="20.04"
+
+
+
+sudo apt-get install build-essential dkms git
+# This is the latest driver
+git clone https://github.com/cilynx/rtl88x2BU_WiFi_linux_v5.3.1_27678.20180430_COEX20180427-5959
+cd rtl88x2BU_WiFi_linux_v5.3.1_27678.20180430_COEX20180427-5959
+VER=$(sed -n 's/\PACKAGE_VERSION="\(.*\)"/\1/p' dkms.conf)
+sudo rsync -rvhP ./ /usr/src/rtl88x2bu-${VER}
+sudo dkms add -m rtl88x2bu -v ${VER}
+sudo dkms build -m rtl88x2bu -v ${VER}
+sudo dkms install -m rtl88x2bu -v ${VER}
+sudo modprobe 88x2bu
+
+sudo apt-get install net-tools
+sudo ifconfig -a
+
+enp0s25: flags=4098<BROADCAST,MULTICAST>  mtu 1500
+        ether bc:5f:f4:e9:4d:00  txqueuelen 1000  (Ethernet)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+        device interrupt 20  memory 0xf0800000-f0820000  
+
+enp5s0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 192.168.0.63  netmask 255.255.255.0  broadcast 192.168.0.255
+        inet6 2601:642:4001:3280:be5f:f4ff:fee9:4cff  prefixlen 64  scopeid 0x0<global>
+        inet6 fe80::be5f:f4ff:fee9:4cff  prefixlen 64  scopeid 0x20<link>
+        ether bc:5f:f4:e9:4c:ff  txqueuelen 1000  (Ethernet)
+        RX packets 119  bytes 19083 (19.0 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 62  bytes 9162 (9.1 KB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+        device memory 0xf0500000-f051ffff  
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        inet6 ::1  prefixlen 128  scopeid 0x10<host>
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 84  bytes 6324 (6.3 KB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 84  bytes 6324 (6.3 KB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+wlx1cbfceeb6c8b: flags=4098<BROADCAST,MULTICAST>  mtu 1500
+        ether 1c:bf:ce:eb:6c:8b  txqueuelen 1000  (Ethernet)
+        RX packets 0  bytes 0 (0.0 B)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 0  bytes 0 (0.0 B)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+sudo ifconfig wlx1cbfceeb6c8b up
+ 
+sudo apt install wireless-tools
+
+sudo iwlist wlx1cbfceeb6c8b scan
+
+wlx1cbfceeb6c8b  Scan completed :
+          Cell 01 - Address: A0:04:60:63:8F:EB
+                    ESSID:"NETGEAR09"
+                    Protocol:IEEE 802.11bgn
+                    Mode:Master
+                    Frequency:2.447 GHz (Channel 8)
+                    Encryption key:on
+                    Bit Rates:144 Mb/s
+                    Extra:rsn_ie=30140100000fac040100000fac040100000fac020c00
+                    IE: IEEE 802.11i/WPA2 Version 1
+                        Group Cipher : CCMP
+                        Pairwise Ciphers (1) : CCMP
+                        Authentication Suites (1) : PSK
+                    IE: Unknown: DD7D0050F204104A0001101044000102103B0001031047001057C69ABFC103580DFEC1FC53760C3E21102100074E657467656172102300074E6574676561721024000631323334353610420004313233341054000800060050F2040001101100054337353030100800022008103C0001031049000A00372A00012005022688
+
+...
+...
+
+sudo apt-get install wpasupplicant
+
+Create /etc/wpa_supplicant.conf 
+
+network={
+    ssid="NETGEAR09-5G"
+    psk="password"
+}
+
+
+sudo wpa_supplicant -Dnl80211 -iwlx1cbfceeb6c8b -c/etc/wpa_supplicant.conf -B
+
+
+vi /etc/rc.local
+#!/bin/sh -e
+  
+ifconfig wlx1cbfceeb6c8b up
+wpa_supplicant -Dnl80211 -iwlx1cbfceeb6c8b -c/etc/wpa_supplicant.conf -B
+dhclient wlx1cbfceeb6c8b
+
+chmod oug+x /etc/rc.local
+
+
+Reference
+https://github.com/cilynx/rtl88x2BU_WiFi_linux_v5.3.1_27678.20180430_COEX20180427-5959
+https://help.ubuntu.com/community/NetworkConfigurationCommandLine/Automatic
